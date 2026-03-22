@@ -100,6 +100,12 @@ export default function LoginPage() {
           <CardTitle>Iniciar sesion</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700">
+            <p className="font-medium mb-2">Usuarios de prueba:</p>
+            <p><strong>Cliente:</strong> rodigoleles@example.com</p>
+            <p><strong>Desarrollador:</strong> mijel2@example.com</p>
+            <p><strong>Contraseña:</strong> password123</p>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
