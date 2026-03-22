@@ -5,6 +5,7 @@ import { use } from "react"
 import { ArrowLeft } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { STATUS_CONFIG, type ContractStatus } from "@/lib/contract-status"
 import { LogViewer } from "@/components/log-viewer"
 
@@ -33,6 +34,7 @@ export default function ContractDetailPage({ params }: ContractDetailPageProps) 
   const statusInfo = STATUS_CONFIG[contract.status]
 
   return (
+    <div className="mx-auto max-w-3xl">
     <div className="space-y-5">
       <div className="flex items-center gap-4">
         <Link href="/dashboard/contracts">
@@ -52,11 +54,9 @@ export default function ContractDetailPage({ params }: ContractDetailPageProps) 
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium">Detalles del contrato</h2>
-            <span
-              className={`rounded border px-1.5 py-0.5 text-xs ${statusInfo.color}`}
-            >
+            <Badge variant="outline" className={statusInfo.color}>
               {statusInfo.label}
-            </span>
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
@@ -120,6 +120,7 @@ export default function ContractDetailPage({ params }: ContractDetailPageProps) 
           <LogViewer />
         </CardContent>
       </Card>
+    </div>
     </div>
   )
 }

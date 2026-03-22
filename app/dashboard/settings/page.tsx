@@ -16,6 +16,7 @@ export default function SettingsPage() {
   }
 
   return (
+    <div className="mx-auto max-w-3xl">
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold">Ajustes</h1>
@@ -105,6 +106,7 @@ export default function SettingsPage() {
           {isSaving ? "Guardando..." : "Guardar cambios"}
         </Button>
       </div>
+    </div>
     </div>
   )
 }
