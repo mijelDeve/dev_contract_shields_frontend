@@ -105,10 +105,32 @@ export default function CreateContractPage() {
     [form]
   )
 
-  async function onSubmit() {
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    toast.success("Contrato creado exitosamente")
-    form.reset()
+  async function onSubmit(values: ContractFormValues) {
+    try {
+      const response = await fetch("/api/contracts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: values.title,
+          amount: Number(values.amount),
+          description: values.description,
+          startDate: values.startDate,
+          dueDate: values.dueDate,
+          isGithubProject: false,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message ?? "Error al crear el contrato")
+      }
+
+      toast.success("Contrato creado exitosamente")
+      form.reset()
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error al crear el contrato"
+      toast.error(message)
+    }
   }
 
   return (

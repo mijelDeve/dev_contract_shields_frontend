@@ -117,6 +117,40 @@ export interface ApiContractsResponse {
   pagination: BackendPagination
 }
 
+export interface CreateContractPayload {
+  readonly title: string
+  readonly amount: number
+  readonly description: string
+  readonly startDate: string
+  readonly dueDate: string
+  readonly isGithubProject: boolean
+}
+
+export interface CreateContractResponse {
+  readonly id: number
+  readonly title: string
+  readonly description?: string
+  readonly amount: number
+  readonly startDate: string
+  readonly dueDate: string
+  readonly isGithubProject: boolean
+  readonly coverage: number | null
+  readonly systemStatus: {
+    readonly id: number
+    readonly code: string
+    readonly nameEs: string
+  }
+  readonly creator: {
+    readonly id: number
+    readonly username: string
+  }
+  readonly developer?: {
+    readonly id: number
+    readonly username: string
+  } | null
+  readonly createdAt: string
+}
+
 export interface ChatMessagePayload {
   readonly message: string
   readonly history: ReadonlyArray<{ readonly role: 'user' | 'assistant'; readonly content: string }>
@@ -126,4 +160,13 @@ export interface ChatMessagePayload {
 export interface ChatResponse {
   readonly reply: string
   readonly requirements: string | null
+}
+
+export interface DeveloperOption {
+  readonly id: string
+  readonly username: string
+  readonly email: string
+  readonly fullName?: string
+  readonly isDeveloper: boolean
+  readonly profilePictureUrl?: string
 }
