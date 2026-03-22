@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { STATUS_CONFIG, FINALIZED_STATUSES, type ContractStatus } from "@/lib/contract-status"
 
 interface Contract {
@@ -66,6 +67,7 @@ export default function ContractsPage() {
   )
 
   return (
+    <div className="mx-auto max-w-3xl">
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
@@ -97,11 +99,9 @@ export default function ContractsPage() {
                         <h3 className="text-sm font-medium leading-tight">
                           {contract.title}
                         </h3>
-                        <span
-                          className={`shrink-0 rounded border px-1.5 py-0.5 text-xs ${statusInfo.color}`}
-                        >
+                        <Badge variant="outline" className={statusInfo.color}>
                           {statusInfo.label}
-                        </span>
+                        </Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="py-2">
@@ -139,11 +139,9 @@ export default function ContractsPage() {
                         <h3 className="text-sm font-medium leading-tight">
                           {contract.title}
                         </h3>
-                        <span
-                          className={`shrink-0 rounded border px-1.5 py-0.5 text-xs ${statusInfo.color}`}
-                        >
+                        <Badge variant="outline" className={statusInfo.color}>
                           {statusInfo.label}
-                        </span>
+                        </Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="py-2">
@@ -162,6 +160,7 @@ export default function ContractsPage() {
           </div>
         )}
       </div>
+    </div>
     </div>
   )
 }
