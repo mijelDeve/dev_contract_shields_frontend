@@ -1,11 +1,13 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { FilePlus, Files, Settings, LogOut } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ThemeToggle } from "@/components/theme-toggle"
+import type { ApiUser } from "@/lib/backend/types"
 
 const navItems = [
   { label: "Crear contrato", href: "/dashboard", icon: FilePlus },
@@ -15,19 +17,62 @@ const navItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const [user, setUser] = useState<ApiUser | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadUser(): Promise<void> {
+      try {
+        const response = await fetch("/api/me", { cache: "no-store" })
+        if (!response.ok) {
+          return
+        }
+
+        const payload = (await response.json()) as ApiUser
+
+        if (isMounted) {
+          setUser(payload)
+        }
+      } catch {
+        if (isMounted) {
+          setUser(null)
+        }
+      }
+    }
+
+    loadUser()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const avatarFallback = user?.fullName?.[0]?.toUpperCase() ?? user?.username?.[0]?.toUpperCase() ?? "U"
+
+  const avatarSource = user?.profilePictureUrl ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username ?? "user"}`
+
+  const roleLabel =
+    user?.isClient && user?.isDeveloper
+      ? "cliente / desarrollador"
+      : user?.isDeveloper
+        ? "desarrollador"
+        : user?.isClient
+          ? "cliente"
+          : "usuario"
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col border-r border-border bg-sidebar">
       <div className="flex items-center gap-3 border-b border-border p-4">
         <Avatar className="size-8">
-          <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" />
-          <AvatarFallback>U</AvatarFallback>
+          <AvatarImage src={avatarSource} />
+          <AvatarFallback>{avatarFallback}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-sidebar-foreground">
-            Usuario Demo
+            {user?.fullName || user?.username || "Usuario"}
           </p>
-          <p className="text-xs text-muted-foreground">cliente</p>
+          <p className="text-xs text-muted-foreground">{roleLabel}</p>
         </div>
         <ThemeToggle />
       </div>

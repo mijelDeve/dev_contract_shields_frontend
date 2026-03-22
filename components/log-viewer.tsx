@@ -33,7 +33,7 @@ const LEVEL_COLORS: Record<string, string> = {
 
 export function LogViewer() {
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const shouldScrollRef = useRef(true)
   const demoIdRef = useRef(0)
@@ -56,8 +56,6 @@ export function LogViewer() {
         setIsConnected(false)
       }
     }, 800)
-
-    setIsConnected(true)
 
     return () => clearInterval(interval)
   }, [])
@@ -115,7 +113,7 @@ export function LogViewer() {
           logs.map((log) => {
             if (!log) return null
             return (
-              <div key={log.id ?? Math.random()} className="flex gap-3">
+              <div key={log.id} className="flex gap-3">
                 <span className="text-zinc-600">
                   [{log.timestamp ?? "00:00:00"}]
                 </span>
