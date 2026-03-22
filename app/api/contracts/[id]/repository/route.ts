@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { ACCESS_TOKEN_COOKIE, ROLE_COOKIE, parseRole } from "@/lib/auth/session"
+import { getBackendErrorMessage } from "@/lib/backend/client"
 
 export const runtime = "nodejs"
 
@@ -15,13 +16,13 @@ interface UpdateRepositoryRouteProps {
   params: Promise<{ id: string }>
 }
 
-interface BackendAttempt {
-  readonly method: "PATCH" | "PUT" | "POST"
-  readonly path: string
-  readonly body: Record<string, string>
+interface SaveGithubRepoBackendResponse {
+  message: string
+  streamUrl: string
+  coverageUrl: string
+  features: string
+  systemStatusId: number
 }
-
-const REQUEST_TIMEOUT_MS = 8_000
 
 function isValidUrl(url: string): boolean {
   try {
@@ -32,27 +33,7 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-async function tryBackendUpdate(attempt: BackendAttempt, accessToken: string): Promise<Response> {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-
-  try {
-    return await fetch(`${BACKEND_BASE_URL}${attempt.path}`, {
-      method: attempt.method,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(attempt.body),
-      cache: "no-store",
-      signal: controller.signal,
-    })
-  } finally {
-    clearTimeout(timeoutId)
-  }
-}
-
-export async function POST(
+export async function PATCH(
   request: Request,
   { params }: UpdateRepositoryRouteProps
 ): Promise<NextResponse> {
@@ -70,8 +51,8 @@ export async function POST(
     }
 
     const { id } = await params
-    const payload = (await request.json()) as RepositoryPayload
-    const githubRepoUrl = payload.githubRepoUrl?.trim() ?? ""
+    const requestPayload = (await request.json()) as RepositoryPayload
+    const githubRepoUrl = requestPayload.githubRepoUrl?.trim() ?? ""
 
     if (!githubRepoUrl) {
       return NextResponse.json({ message: "La URL del repositorio es requerida." }, { status: 400 })
@@ -81,58 +62,39 @@ export async function POST(
       return NextResponse.json({ message: "Ingresa una URL valida (http/https)." }, { status: 400 })
     }
 
-    const attempts: BackendAttempt[] = [
-      {
-        method: "PATCH",
-        path: `/contracts/${id}`,
-        body: { githubRepoUrl },
+    const response = await fetch(`${BACKEND_BASE_URL}/contracts/${id}/github-repo`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
-      {
-        method: "PATCH",
-        path: `/contracts/${id}`,
-        body: { github_repo_url: githubRepoUrl },
-      },
-      {
-        method: "PATCH",
-        path: `/contracts/${id}/repository`,
-        body: { githubRepoUrl },
-      },
-      {
-        method: "PATCH",
-        path: `/contracts/${id}/repository`,
-        body: { github_repo_url: githubRepoUrl },
-      },
-      {
-        method: "PUT",
-        path: `/contracts/${id}`,
-        body: { githubRepoUrl },
-      },
-      {
-        method: "POST",
-        path: `/contracts/${id}/repository`,
-        body: { githubRepoUrl },
-      },
-    ]
+      body: JSON.stringify({ githubRepoUrl }),
+      cache: "no-store",
+    })
 
-    let lastErrorStatus = 500
+    if (!response.ok) {
+      const errorPayload = (await response.json().catch(() => null)) as
+        | { message?: string | string[] }
+        | null
 
-    for (const attempt of attempts) {
-      const response = await tryBackendUpdate(attempt, accessToken)
-      if (response.ok) {
-        return NextResponse.json({ success: true, githubRepoUrl })
-      }
+      const errorMessage = Array.isArray(errorPayload?.message)
+        ? errorPayload?.message.join(". ")
+        : errorPayload?.message ?? "No se pudo guardar la URL del repositorio."
 
-      lastErrorStatus = response.status
+      return NextResponse.json({ message: errorMessage }, { status: response.status })
     }
 
-    return NextResponse.json(
-      {
-        message:
-          "No se pudo guardar la URL. Tu backend no expone un endpoint compatible para actualizar el repositorio.",
-      },
-      { status: lastErrorStatus >= 400 ? lastErrorStatus : 502 }
-    )
-  } catch {
-    return NextResponse.json({ message: "No se pudo guardar la URL del repositorio." }, { status: 500 })
+    const backendPayload = (await response.json()) as SaveGithubRepoBackendResponse
+
+    return NextResponse.json({
+      message: backendPayload.message,
+      streamUrl: backendPayload.streamUrl,
+      coverageUrl: backendPayload.coverageUrl,
+      features: backendPayload.features,
+      systemStatusId: backendPayload.systemStatusId,
+    })
+  } catch (error: unknown) {
+    const message = getBackendErrorMessage(error, "No se pudo guardar la URL del repositorio.")
+    return NextResponse.json({ message }, { status: 500 })
   }
 }

@@ -17,6 +17,22 @@ interface RepositoryFormState {
 
 type RepositoryFormMap = Record<string, RepositoryFormState>
 
+interface RepositoryFlowInfo {
+  readonly streamUrl: string
+  readonly coverageUrl: string
+  readonly features: string
+}
+
+type RepositoryFlowMap = Record<string, RepositoryFlowInfo>
+
+interface SaveRepositoryResponse {
+  readonly message: string
+  readonly streamUrl: string
+  readonly coverageUrl: string
+  readonly features: string
+  readonly systemStatusId: number
+}
+
 function isValidUrl(url: string): boolean {
   try {
     const parsedUrl = new URL(url)
@@ -30,6 +46,7 @@ export default function ContractsPage() {
   const [contracts, setContracts] = useState<ApiContract[]>([])
   const [currentUser, setCurrentUser] = useState<ApiUser | null>(null)
   const [repoForms, setRepoForms] = useState<RepositoryFormMap>({})
+  const [repoFlows, setRepoFlows] = useState<RepositoryFlowMap>({})
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -129,14 +146,14 @@ export default function ContractsPage() {
 
     try {
       const response = await fetch(`/api/contracts/${contractId}/repository`, {
-        method: "POST",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ githubRepoUrl }),
       })
 
-      const payload = (await response.json()) as { message?: string }
+      const payload = (await response.json()) as Partial<SaveRepositoryResponse> & { message?: string }
 
       if (!response.ok) {
         throw new Error(payload.message ?? "No se pudo guardar la URL.")
@@ -144,11 +161,32 @@ export default function ContractsPage() {
 
       setContracts((previousContracts) =>
         previousContracts.map((contract) =>
-          contract.id === contractId ? { ...contract, githubRepoUrl } : contract
+          contract.id === contractId
+            ? {
+                ...contract,
+                githubRepoUrl,
+                status: payload.systemStatusId === 3 ? "testing" : contract.status,
+              }
+            : contract
         )
       )
 
-      toast.success("Repositorio guardado.")
+      if (payload.streamUrl && payload.coverageUrl && payload.features) {
+        const streamUrl = payload.streamUrl
+        const coverageUrl = payload.coverageUrl
+        const features = payload.features
+
+        setRepoFlows((previous) => ({
+          ...previous,
+          [contractId]: {
+            streamUrl,
+            coverageUrl,
+            features,
+          },
+        }))
+      }
+
+      toast.success(payload.message ?? "Repositorio guardado.")
       updateFormState(contractId, { value: "", isSaving: false })
     } catch (error: unknown) {
       if (error instanceof Error && error.message.length > 0) {
@@ -167,6 +205,7 @@ export default function ContractsPage() {
   function renderContractCard(contract: ApiContract, muted: boolean): ReactElement {
     const statusInfo = STATUS_CONFIG[contract.status]
     const formState = getFormState(contract.id)
+    const flowInfo = repoFlows[contract.id]
 
     return (
       <Card key={contract.id} className={muted ? "opacity-75" : undefined}>
@@ -193,17 +232,38 @@ export default function ContractsPage() {
           </div>
 
           {contract.githubRepoUrl ? (
-            <p className="text-xs text-muted-foreground">
-              Repo: {" "}
-              <a
-                href={contract.githubRepoUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline-offset-4 hover:underline"
-              >
-                {contract.githubRepoUrl}
-              </a>
-            </p>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Repo:{" "}
+                <a
+                  href={contract.githubRepoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  {contract.githubRepoUrl}
+                </a>
+              </p>
+
+              {flowInfo ? (
+                <div className="rounded-md border border-border p-3 text-xs text-muted-foreground">
+                  <p className="mb-1">Tests iniciados en background.</p>
+                  <p>
+                    Stream:{" "}
+                    <a href={flowInfo.streamUrl} className="text-primary underline-offset-4 hover:underline">
+                      {flowInfo.streamUrl}
+                    </a>
+                  </p>
+                  <p>
+                    Coverage:{" "}
+                    <a href={flowInfo.coverageUrl} className="text-primary underline-offset-4 hover:underline">
+                      {flowInfo.coverageUrl}
+                    </a>
+                  </p>
+                  <p className="mt-1 line-clamp-2">Features: {flowInfo.features}</p>
+                </div>
+              ) : null}
+            </div>
           ) : currentUser?.isDeveloper ? (
             <div className="space-y-2 rounded-md border border-border p-3">
               <p className="text-xs text-muted-foreground">
