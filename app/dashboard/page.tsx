@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -80,6 +80,31 @@ export default function CreateContractPage() {
 
   const descriptionValue = useWatch({ control: form.control, name: "description" })
 
+  const handleRequirementsGenerated = useCallback(
+    (requirements: string) => {
+      const currentDescription = form.getValues("description")
+
+      const requirementsSeparator = "\n\n--- Requerimientos Generados por IA ---\n\n"
+      const separatorIndex = currentDescription.indexOf("--- Requerimientos Generados por IA ---")
+
+      let newValue: string
+      if (currentDescription.trim().length === 0) {
+        newValue = requirements
+      } else if (separatorIndex !== -1) {
+        // Replace existing requirements, keep original description
+        const originalDescription = currentDescription.substring(0, separatorIndex).trimEnd()
+        newValue = originalDescription + requirementsSeparator + requirements
+      } else {
+        newValue = currentDescription + requirementsSeparator + requirements
+      }
+
+      form.setValue("description", newValue, { shouldValidate: true })
+      setDescriptionOpen(true)
+      toast.success("Requerimientos aplicados al contrato")
+    },
+    [form]
+  )
+
   async function onSubmit() {
     await new Promise((resolve) => setTimeout(resolve, 1000))
     toast.success("Contrato creado exitosamente")
@@ -98,7 +123,11 @@ export default function CreateContractPage() {
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {/* Left panel: AI Chat (40%) */}
         <div className="max-h-[50vh] lg:max-h-none lg:w-[40%] lg:min-w-0">
-          <AiChat className="h-full lg:sticky lg:top-8 lg:h-[calc(100vh-12rem)]" />
+          <AiChat
+            className="h-full lg:sticky lg:top-8 lg:h-[calc(100vh-12rem)]"
+            contractDescription={descriptionValue}
+            onRequirementsGenerated={handleRequirementsGenerated}
+          />
         </div>
 
         {/* Right panel: Contract form (60%) */}
@@ -170,7 +199,7 @@ export default function CreateContractPage() {
                         <FormControl>
                           <Textarea
                             placeholder="Describe los requisitos del proyecto..."
-                            className="min-h-36 resize-none"
+                            className="h-36 resize-none overflow-y-auto field-sizing-fixed"
                             {...field}
                           />
                         </FormControl>
@@ -322,7 +351,7 @@ export default function CreateContractPage() {
           </DialogHeader>
           <Textarea
             placeholder="Describe los requisitos del proyecto..."
-            className="min-h-145 resize-none"
+            className="h-145 resize-none overflow-y-auto field-sizing-fixed"
             value={descriptionValue}
             onChange={(e) => form.setValue("description", e.target.value)}
           />
