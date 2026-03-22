@@ -11,6 +11,10 @@ export function proxy(request: NextRequest): NextResponse {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
+  if (pathname === "/dashboard" && role === "developer") {
+    return NextResponse.redirect(new URL("/dashboard/contracts", request.url))
+  }
+
   if ((pathname === "/" || pathname === "/login") && accessToken) {
     return NextResponse.redirect(new URL(getRoleHomePath(role), request.url))
   }

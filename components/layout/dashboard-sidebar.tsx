@@ -63,6 +63,14 @@ export function DashboardSidebar() {
           ? "cliente"
           : "usuario"
 
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.href === "/dashboard" && user?.isDeveloper) {
+      return false
+    }
+
+    return true
+  })
+
   async function handleLogout(): Promise<void> {
     if (isLoggingOut) {
       return
@@ -99,7 +107,7 @@ export function DashboardSidebar() {
 
       <nav className="flex-1 p-3">
         <ul className="space-y-0.5">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
 

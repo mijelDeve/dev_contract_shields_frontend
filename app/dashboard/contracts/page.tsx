@@ -1,37 +1,67 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { type ReactElement, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { toast } from "sonner"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { STATUS_CONFIG, FINALIZED_STATUSES } from "@/lib/contract-status"
-import type { ApiContract, ApiContractsResponse } from "@/lib/backend/types"
+import type { ApiContract, ApiContractsResponse, ApiUser } from "@/lib/backend/types"
+
+interface RepositoryFormState {
+  readonly value: string
+  readonly isSaving: boolean
+}
+
+type RepositoryFormMap = Record<string, RepositoryFormState>
+
+function isValidUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url)
+    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:"
+  } catch {
+    return false
+  }
+}
 
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<ApiContract[]>([])
+  const [currentUser, setCurrentUser] = useState<ApiUser | null>(null)
+  const [repoForms, setRepoForms] = useState<RepositoryFormMap>({})
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
 
-    async function loadContracts(): Promise<void> {
+    async function loadContractsAndUser(): Promise<void> {
       setIsLoading(true)
       setErrorMessage(null)
 
       try {
-        const response = await fetch("/api/contracts", { cache: "no-store" })
+        const [contractsResponse, userResponse] = await Promise.all([
+          fetch("/api/contracts", { cache: "no-store" }),
+          fetch("/api/me", { cache: "no-store" }),
+        ])
 
-        if (!response.ok) {
-          const payload = (await response.json()) as { message?: string }
+        if (!contractsResponse.ok) {
+          const payload = (await contractsResponse.json()) as { message?: string }
           throw new Error(payload.message ?? "No se pudieron cargar los contratos.")
         }
 
-        const payload = (await response.json()) as ApiContractsResponse
+        if (!userResponse.ok) {
+          const payload = (await userResponse.json()) as { message?: string }
+          throw new Error(payload.message ?? "No se pudo cargar el usuario.")
+        }
+
+        const contractsPayload = (await contractsResponse.json()) as ApiContractsResponse
+        const userPayload = (await userResponse.json()) as ApiUser
 
         if (isMounted) {
-          setContracts(payload.data)
+          setContracts(contractsPayload.data)
+          setCurrentUser(userPayload)
         }
       } catch (error: unknown) {
         if (isMounted) {
@@ -41,6 +71,7 @@ export default function ContractsPage() {
             setErrorMessage("No se pudieron cargar los contratos.")
           }
           setContracts([])
+          setCurrentUser(null)
         }
       } finally {
         if (isMounted) {
@@ -49,7 +80,7 @@ export default function ContractsPage() {
       }
     }
 
-    loadContracts()
+    loadContractsAndUser()
 
     return () => {
       isMounted = false
@@ -66,15 +97,159 @@ export default function ContractsPage() {
     [contracts]
   )
 
+  function getFormState(contractId: string): RepositoryFormState {
+    return repoForms[contractId] ?? { value: "", isSaving: false }
+  }
+
+  function updateFormState(contractId: string, nextState: RepositoryFormState): void {
+    setRepoForms((previous) => ({
+      ...previous,
+      [contractId]: nextState,
+    }))
+  }
+
+  async function saveRepositoryUrl(contractId: string): Promise<void> {
+    const formState = getFormState(contractId)
+    const githubRepoUrl = formState.value.trim()
+
+    if (!githubRepoUrl) {
+      toast.error("Ingresa una URL de repositorio.")
+      return
+    }
+
+    if (!isValidUrl(githubRepoUrl)) {
+      toast.error("La URL debe comenzar con http:// o https://")
+      return
+    }
+
+    updateFormState(contractId, {
+      value: formState.value,
+      isSaving: true,
+    })
+
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/repository`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ githubRepoUrl }),
+      })
+
+      const payload = (await response.json()) as { message?: string }
+
+      if (!response.ok) {
+        throw new Error(payload.message ?? "No se pudo guardar la URL.")
+      }
+
+      setContracts((previousContracts) =>
+        previousContracts.map((contract) =>
+          contract.id === contractId ? { ...contract, githubRepoUrl } : contract
+        )
+      )
+
+      toast.success("Repositorio guardado.")
+      updateFormState(contractId, { value: "", isSaving: false })
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.length > 0) {
+        toast.error(error.message)
+      } else {
+        toast.error("No se pudo guardar la URL del repositorio.")
+      }
+
+      updateFormState(contractId, {
+        value: githubRepoUrl,
+        isSaving: false,
+      })
+    }
+  }
+
+  function renderContractCard(contract: ApiContract, muted: boolean): ReactElement {
+    const statusInfo = STATUS_CONFIG[contract.status]
+    const formState = getFormState(contract.id)
+
+    return (
+      <Card key={contract.id} className={muted ? "opacity-75" : undefined}>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              href={`/dashboard/contracts/${contract.id}`}
+              className="text-sm font-medium leading-tight hover:underline"
+            >
+              {contract.title}
+            </Link>
+            <Badge variant="outline" className={statusInfo.color}>
+              {statusInfo.label}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 py-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex gap-4">
+              <span>{contract.developer}</span>
+              <span>{contract.dueDate}</span>
+            </div>
+            <span className="font-medium">{contract.amountLabel}</span>
+          </div>
+
+          {contract.githubRepoUrl ? (
+            <p className="text-xs text-muted-foreground">
+              Repo: {" "}
+              <a
+                href={contract.githubRepoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                {contract.githubRepoUrl}
+              </a>
+            </p>
+          ) : (
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <p className="text-xs text-muted-foreground">
+                Este contrato no tiene repositorio. Sube el enlace para continuar.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={formState.value}
+                  onChange={(event) =>
+                    updateFormState(contract.id, {
+                      value: event.target.value,
+                      isSaving: formState.isSaving,
+                    })
+                  }
+                  placeholder="https://github.com/tu-org/tu-repo"
+                  disabled={formState.isSaving}
+                  className="h-9"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => saveRepositoryUrl(contract.id)}
+                  disabled={formState.isSaving}
+                >
+                  {formState.isSaving ? "Guardando..." : "Guardar repo"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">Mis contratos</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">Contratos creados</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">Contratos asignados o creados</p>
           </div>
-          <Button size="sm">Nuevo</Button>
+          {!currentUser?.isDeveloper ? (
+            <Link href="/dashboard">
+              <Button size="sm">Nuevo</Button>
+            </Link>
+          ) : null}
         </div>
 
         {errorMessage ? (
@@ -90,81 +265,19 @@ export default function ContractsPage() {
         ) : null}
 
         <div className="space-y-4">
-          {activeContracts.length > 0 && (
+          {activeContracts.length > 0 ? (
             <div className="space-y-2">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Activos
-              </h2>
-              {activeContracts.map((contract) => {
-                const statusInfo = STATUS_CONFIG[contract.status]
-                return (
-                  <Link
-                    key={contract.id}
-                    href={`/dashboard/contracts/${contract.id}`}
-                    className="block"
-                  >
-                    <Card className="cursor-pointer transition-colors hover:bg-muted/50">
-                      <CardHeader className="py-3">
-                        <div className="flex items-center justify-between gap-4">
-                          <h3 className="text-sm font-medium leading-tight">{contract.title}</h3>
-                          <Badge variant="outline" className={statusInfo.color}>
-                            {statusInfo.label}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="py-2">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex gap-4">
-                            <span>{contract.developer}</span>
-                            <span>{contract.dueDate}</span>
-                          </div>
-                          <span className="font-medium">{contract.amountLabel}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                )
-              })}
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Activos</h2>
+              {activeContracts.map((contract) => renderContractCard(contract, false))}
             </div>
-          )}
+          ) : null}
 
-          {completedContracts.length > 0 && (
+          {completedContracts.length > 0 ? (
             <div className="space-y-2">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Historial
-              </h2>
-              {completedContracts.map((contract) => {
-                const statusInfo = STATUS_CONFIG[contract.status]
-                return (
-                  <Link
-                    key={contract.id}
-                    href={`/dashboard/contracts/${contract.id}`}
-                    className="block opacity-75"
-                  >
-                    <Card className="cursor-pointer transition-colors hover:bg-muted/50">
-                      <CardHeader className="py-3">
-                        <div className="flex items-center justify-between gap-4">
-                          <h3 className="text-sm font-medium leading-tight">{contract.title}</h3>
-                          <Badge variant="outline" className={statusInfo.color}>
-                            {statusInfo.label}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="py-2">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex gap-4">
-                            <span>{contract.developer}</span>
-                            <span>{contract.dueDate}</span>
-                          </div>
-                          <span className="font-medium">{contract.amountLabel}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                )
-              })}
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Historial</h2>
+              {completedContracts.map((contract) => renderContractCard(contract, true))}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
