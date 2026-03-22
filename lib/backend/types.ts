@@ -116,3 +116,14 @@ export interface ApiContractsResponse {
   data: ApiContract[]
   pagination: BackendPagination
 }
+
+export interface ChatMessagePayload {
+  readonly message: string
+  readonly history: ReadonlyArray<{ readonly role: 'user' | 'assistant'; readonly content: string }>
+  readonly contractDescription?: string
+}
+
+export interface ChatResponse {
+  readonly reply: string
+  readonly requirements: string | null
+}

@@ -93,6 +93,34 @@ export async function backendPostJson<TRequest, TResponse>(
   return (await response.json()) as TResponse
 }
 
+export async function backendPostJson<TBody, TResponse>(path: string, body: TBody): Promise<TResponse> {
+  let response = await performAuthenticatedRequest(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (response.status === 401) {
+    cachedToken = null
+    response = await performAuthenticatedRequest(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
+  }
+
+  if (!response.ok) {
+    const message = await parseBackendError(response)
+    throw new BackendRequestError(message, response.status)
+  }
+
+  return (await response.json()) as TResponse
+}
+
 export function getBackendErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof BackendRequestError) {
     return error.message
