@@ -4,7 +4,6 @@ import { cookies } from "next/headers"
 import { backendPostJson, getBackendErrorMessage } from "@/lib/backend/client"
 import { ACCESS_TOKEN_COOKIE } from "@/lib/auth/session"
 import type { ChatMessagePayload, ChatResponse } from "@/lib/backend/types"
-import { ACCESS_TOKEN_COOKIE } from "@/lib/auth/session"
 
 export const runtime = "nodejs"
 
