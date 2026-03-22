@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { ACCESS_TOKEN_COOKIE } from "@/lib/auth/session"
+import { ACCESS_TOKEN_COOKIE, ROLE_COOKIE, parseRole } from "@/lib/auth/session"
 
 export const runtime = "nodejs"
 
@@ -59,9 +59,14 @@ export async function POST(
   try {
     const cookieStore = await cookies()
     const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value
+    const role = parseRole(cookieStore.get(ROLE_COOKIE)?.value)
 
     if (!accessToken) {
       return NextResponse.json({ message: "No autenticado." }, { status: 401 })
+    }
+
+    if (role !== "developer") {
+      return NextResponse.json({ message: "Solo un desarrollador puede subir el repositorio." }, { status: 403 })
     }
 
     const { id } = await params

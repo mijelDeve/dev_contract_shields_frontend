@@ -204,7 +204,7 @@ export default function ContractsPage() {
                 {contract.githubRepoUrl}
               </a>
             </p>
-          ) : (
+          ) : currentUser?.isDeveloper ? (
             <div className="space-y-2 rounded-md border border-border p-3">
               <p className="text-xs text-muted-foreground">
                 Este contrato no tiene repositorio. Sube el enlace para continuar.
@@ -231,6 +231,10 @@ export default function ContractsPage() {
                 </Button>
               </div>
             </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              El desarrollador debe subir el repositorio para este contrato.
+            </p>
           )}
         </CardContent>
       </Card>
