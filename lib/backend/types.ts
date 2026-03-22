@@ -4,6 +4,15 @@ export interface BackendLoginResponse {
   accessToken: string
   tokenType: string
   expiresIn: number
+  user: {
+    id: number
+    username: string
+    email: string
+    fullName: string
+    walletAddress: string
+    isClient: boolean
+    isDeveloper: boolean
+  }
 }
 
 export interface BackendMeResponse {
