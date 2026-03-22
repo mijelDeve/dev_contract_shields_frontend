@@ -102,11 +102,19 @@ export default function ContractDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4 pt-0">
                 <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground">Descripción</p>
-                  <p className="text-sm">{contract.description}</p>
+                  <p className="text-xs text-muted-foreground">Descripcion</p>
+                  <p className="whitespace-pre-wrap text-sm">{contract.description}</p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">ID contrato</p>
+                    <p className="text-sm font-medium">{contract.id}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Creador</p>
+                    <p className="text-sm font-medium">{contract.creator}</p>
+                  </div>
                   <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground">Desarrollador</p>
                     <p className="text-sm font-medium">{contract.developer}</p>
@@ -116,12 +124,28 @@ export default function ContractDetailPage() {
                     <p className="text-sm font-medium">{contract.amountLabel}</p>
                   </div>
                   <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Moneda</p>
+                    <p className="text-sm">{contract.currency}</p>
+                  </div>
+                  <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground">Fecha de inicio</p>
                     <p className="text-sm">{contract.startDate}</p>
                   </div>
                   <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground">Fecha de entrega</p>
                     <p className="text-sm">{contract.dueDate}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Creado en</p>
+                    <p className="text-sm">{contract.createdAt}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Estado interno</p>
+                    <p className="text-sm">{contract.status}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Proyecto GitHub</p>
+                    <p className="text-sm">{contract.isGithubProject ? "Si" : "No"}</p>
                   </div>
                 </div>
               </CardContent>
