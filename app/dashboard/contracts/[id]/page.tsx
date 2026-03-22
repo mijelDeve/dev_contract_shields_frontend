@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { STATUS_CONFIG } from "@/lib/contract-status"
 import { LogViewer } from "@/components/log-viewer"
 import type { ApiContract } from "@/lib/backend/types"
+import { TERMINAL_DATA } from "@/app/constants/terminal-data"
 
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>()
@@ -173,7 +174,7 @@ export default function ContractDetailPage() {
                 <h2 className="text-sm font-medium">Terminal</h2>
               </CardHeader>
               <CardContent className="pt-0">
-                <LogViewer />
+                <LogViewer entries={TERMINAL_DATA} />
               </CardContent>
             </Card>
           </>
